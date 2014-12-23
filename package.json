@@ -1,0 +1,34 @@
+{
+    "name": "restapi",
+    "version": "0.0.1",
+    "author": "Fernando Rodríguez Sela",
+    "description": "REST API parser",
+    "contributors": [
+        {
+            "name": "Fernando Rodriguez Sela",
+            "email": "fernando@ferimer.es"
+        }
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git@git.ferimer.es:/basket/restapi"
+    },
+    "bugs": {
+        "url": "http://soporte.ferimer.es"
+    },
+    "keywords": [
+        "json",
+        "rest"
+    ],
+    "dependencies": {
+        "path-to-regexp": "1.0.x"
+    },
+    "engines": {
+        "node": "0.10.x"
+    },
+    "license": {
+        "type": "GNU Affero General Public License",
+        "url": "http://www.gnu.org/licenses/agpl-3.0.html"
+    }
+}
+
