@@ -85,13 +85,12 @@ function _RDL_Server(definition_file, options) {
             params[api_paths[i].keys[j-1].name] = endpoint[j];
           }
           self.process(req, res, api_paths[i].endpoint, params);
-          res.end();
+          return;
         }
       }
 
       // If no endpoint found ...
       self.error(res, '404', 'Sorry, Endpoint not found in this Server');
-      res.end();
     });
 
     server.listen(self.options.port, self.options.hostname, function() {
@@ -103,26 +102,50 @@ function _RDL_Server(definition_file, options) {
 _RDL_Server.prototype = {
   error: function(res, code, defaultMsg) {
     code = typeof code === 'number' ? '' + code : code;
-    res.writeHead(code, {'Content-Type': 'text/json'});
     var response = this.api.getResponse(code);
     var errorMsg = (response && JSON.stringify(response.data)) || null;
     if (errorMsg && typeof response.data === 'object') {
-      res.writeHead(code, {'Content-Type': 'text/json'});
+      res.writeHead(code, {'Content-Type': 'application/json'});
     } else {
       res.writeHead(code, {'Content-Type': 'text/plain'});
     }
-    res.write(errorMsg || defaultMsg);
+    res.end(errorMsg || defaultMsg);
   },
 
   process: function(req, res, endpoint, params) {
     debug("ENDPOINT", endpoint);
     debug("PARAMS", params);
 
+    debug('Endpoint data: ', this.api.getEndpoint(endpoint));
+
+    var self = this;
+    function onendpointCallback(error) {
+      if (error) {
+        debug('onendpointCallback error:', error);
+        self.error(res, error.code, error.message);
+      } else {
+        res.end();
+      }
+    }
+
     // Checking if the method is valid
     if (req.method.toLowerCase() in this.api.getEndpoint(endpoint).methods) {
-      // TODO: Method accepted, call callback for backend processing
-      res.writeHead(200, {'Content-Type': 'text/html'});
-      res.write(JSON.stringify(this.api.getEndpoint(endpoint)));
+      // TODO: Method accepted, check entry params type based on defined schema
+      var endpoint_name = endpoint.substring(1);
+      var callback = endpoint_name + '_' + req.method.toLowerCase();
+      if (callback in this && typeof this[callback] === 'function') {
+        debug('Located callback function with method name', callback);
+        this[callback](req, res, params, onendpointCallback);
+      } else if (endpoint_name in this && typeof this[endpoint_name] === 'function') {
+        debug('Located callback function without method name', endpoint_name);
+        this[endpoint_name](req, res, params, req.method, onendpointCallback);
+      } else if ('onendpoint' in this && typeof this['onendpoint'] === 'function') {
+        debug('Located generic function onendpoint');
+        this.onendpoint(req, res, endpoint, params, req.method, onendpointCallback);
+      } else {
+        debug('No endpoint callback function found !');
+        this.error(res, 501, 'Not implemented');
+      }
     } else {
       this.error(res, 405, 'Method not allowed for this endpoint');
     }
