@@ -26,7 +26,7 @@ function debug(msg, obj) {
 /**
  * definition_file: Path to the REST API DEFINITION FILE
  * options: Extra options to change behaviour
- *  hostname: hostname to listen for connections [DEFAULT: 0.0.0.0]
+ *  hostname: hostname to listen for connections [DEFAULT: ::]
  *  port: TCP port [DEFAULT: 3000]
  * cb: Callback function
  */
@@ -36,7 +36,10 @@ function _RDL_Server(definition_file, options) {
     this.options.port = 3000;
   }
   if (typeof this.options.hostname !== 'string') { // TODO: Check IP
-    this.options.hostname = '0.0.0.0';
+    this.options.hostname = '::';
+  }
+  if (typeof this.options.hostname6 !== 'string') { // TODO: Check IP
+    this.options.hostname6 = '::';
   }
 
   this.api = new rdl(definition_file, {
