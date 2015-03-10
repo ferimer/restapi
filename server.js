@@ -71,7 +71,9 @@ function _RDL_Server(definition_file, options) {
     var number_of_endpoints = api_paths.length;
 
     // Server initialization
-    var server = http.createServer(function(req, res) {
+    function httpHandler(req, res) {
+      res.setHeader('X-Server', 'FerimerRDL HTTP server');
+
       debug('Query:', JSON.stringify(req.headers));
       debug('Method: ' + req.method);
       debug('URL: ' + req.url);
@@ -94,8 +96,9 @@ function _RDL_Server(definition_file, options) {
 
       // If no endpoint found ...
       self.error(res, '404', 'Sorry, Endpoint not found in this Server');
-    });
+    };
 
+    var server = http.createServer(httpHandler);
     server.listen(self.options.port, self.options.hostname, function() {
       info('Listening on ' + self.options.hostname + ':' + self.options.port);
     });
