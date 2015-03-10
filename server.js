@@ -107,12 +107,12 @@ _RDL_Server.prototype = {
     code = typeof code === 'number' ? '' + code : code;
     var response = this.api.getResponse(code);
     var errorMsg = (response && JSON.stringify(response.data)) || null;
-    if (errorMsg && typeof response.data === 'object') {
+    if (errorMsg && typeof response.data === 'object' || typeof defaultMsg === 'object') {
       res.writeHead(code, {'Content-Type': 'application/json'});
     } else {
       res.writeHead(code, {'Content-Type': 'text/plain'});
     }
-    res.end(errorMsg || defaultMsg);
+    res.end(errorMsg || (typeof defaultMsg === 'object' ? JSON.stringify(defaultMsg) : defaultMsg));
   },
 
   process: function(req, res, endpoint, params) {
