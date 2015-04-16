@@ -127,6 +127,15 @@ _RDL_Parser.prototype = {
         }
       });
 
+      // Adding CORS support (if enabled)
+      if (resource.cors || this.rdl.common.cors) {
+        var cors = this.rdl.common.cors || {};
+        resource.cors && Object.keys(resource.cors).forEach(function (corskey) {
+          cors[corskey] = resource.cors[corskey];
+        });
+        resource.cors = cors;
+      }
+
       return resource;
     } catch(e) {
       return { error: 'Bad endpoint' };

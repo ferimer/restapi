@@ -135,10 +135,20 @@ _RDL_Server.prototype = {
   },
 
   process: function(req, res, endpoint, params) {
+    var endpointData = this.api.getEndpoint(endpoint);
+
     debug("ENDPOINT", endpoint);
     debug("PARAMS", params);
+    debug('Endpoint data: ', endpointData);
 
-    debug('Endpoint data: ', this.api.getEndpoint(endpoint));
+    if (endpointData.cors) {
+      res.setHeader('Access-Control-Allow-Origin',
+        endpointData.cors['Access-Control-Allow-Origin']);
+      res.setHeader('Access-Control-Allow-Methods',
+        endpointData.cors['Access-Control-Allow-Methods']);
+      res.setHeader('Access-Control-Allow-Headers',
+        endpointData.cors['Access-Control-Allow-Headers']);
+    }
 
     var self = this;
     function onendpointCallback(error) {
@@ -151,7 +161,7 @@ _RDL_Server.prototype = {
     }
 
     // Checking if the method is valid
-    if (req.method.toLowerCase() in this.api.getEndpoint(endpoint).methods) {
+    if (req.method.toLowerCase() in endpointData.methods) {
       // TODO: Method accepted, check entry params type based on defined schema
       var endpoint_name = endpoint.substring(1);
       var callback = endpoint_name + '_' + req.method.toLowerCase();
