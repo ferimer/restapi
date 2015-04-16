@@ -14,7 +14,11 @@ function info(msg) {
   console.info('REST Server: ' + msg);
 }
 
+var debugEnabled = false;
 function debug(msg, obj) {
+  if (!debugEnabled) {
+    return;
+  }
   if (obj) {
     msg += ' ' + JSON.stringify(obj);
   }
@@ -32,6 +36,18 @@ function debug(msg, obj) {
  */
 function _RDL_Server(definition_file, options) {
   this.options = typeof options === 'object' ? options : {};
+
+  if (options.debug) {
+    debugEnabled = true;
+  }
+  if (options.log) {
+    if (options.log.info && typeof options.log.info === 'function') {
+      info = options.log.info;
+    }
+    if (options.log.debug && typeof options.log.debug === 'function') {
+      debug = options.log.debug;
+    }
+  }
   if (typeof this.options.port !== 'number') {
     this.options.port = 3000;
   }
