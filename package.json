@@ -21,6 +21,7 @@
         "rest"
     ],
     "dependencies": {
+        "formidable": "1.0.x",
         "path-to-regexp": "1.0.x"
     },
     "engines": {

@@ -6,7 +6,8 @@
 
 var http = require('http'),
     path2regex = require('path-to-regexp'),
-    rdl = require('./parser');
+    rdl = require('./parser'),
+    formidable = require('formidable');
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -105,7 +106,25 @@ function _RDL_Server(definition_file, options) {
           for (var j = 1; j < endpoint.length; j++) {
             params[api_paths[i].keys[j-1].name] = endpoint[j];
           }
-          self.process(req, res, api_paths[i].endpoint, params);
+
+          // Processing received parameters
+          var form = new formidable.IncomingForm();
+          form.parse(req, function(err, fields, files) {
+            if (err) {
+              info('Error getting fields and files - ' + err);
+              self.error(res, 406, err);
+              return;
+            }
+
+            debug("Received fields", fields);
+            debug("Received files", files);
+
+            params.fields = fields;
+            params.files = files;
+
+            self.process(req, res, api_paths[i].endpoint, params);
+          });
+
           return;
         }
       }
