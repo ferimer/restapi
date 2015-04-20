@@ -165,6 +165,11 @@ _RDL_Server.prototype = {
     debug('Checking input parameters...');
     var error = false;
     var method = req.method.toLowerCase();
+    if (!endpointData.methods[method].params) {
+      // Mandatory params is optional ...
+      callback(null);
+      return;
+    }
     var allowedParams = endpointData.methods[method].params;
     Object.keys(allowedParams).forEach(function(param) {
       switch (allowedParams[param]) {
