@@ -102,6 +102,10 @@ function _RDL_Server(definition_file, options) {
           debug('Endpoint found - ' + api_paths[i].endpoint);
           debug(' -> ', endpoint);
           debug('KEYS:', api_paths[i].keys);
+          var endpointData = self.api.getEndpoint(api_paths[i].endpoint);
+          endpointData.path = api_paths[i].endpoint;
+          debug("Endpoint Data - ", endpointData);
+
           var params = {};
           for (var j = 1; j < endpoint.length; j++) {
             params[api_paths[i].keys[j-1].name] = endpoint[j];
@@ -116,13 +120,17 @@ function _RDL_Server(definition_file, options) {
               return;
             }
 
-            debug("Received fields", fields);
-            debug("Received files", files);
-
             params.fields = fields;
             params.files = files;
+            debug("Received params and files: ", params);
 
-            self.process(req, res, api_paths[i].endpoint, params);
+            self.checkParameters(req, params, endpointData, function(error) {
+              if (error) {
+                self.error(res, 412, 'Bad parameters');
+                return;
+              }
+              self.process(req, res, endpointData, params);
+            });
           });
 
           return;
@@ -153,13 +161,30 @@ _RDL_Server.prototype = {
     res.end(errorMsg || (typeof defaultMsg === 'object' ? JSON.stringify(defaultMsg) : defaultMsg));
   },
 
-  process: function(req, res, endpoint, params) {
-    var endpointData = this.api.getEndpoint(endpoint);
+  checkParameters: function(req, params, endpointData, callback) {
+    debug('Checking input parameters...');
+    var error = false;
+    var method = req.method.toLowerCase();
+    var allowedParams = endpointData.methods[method].params;
+    Object.keys(allowedParams).forEach(function(param) {
+      switch (allowedParams[param]) {
+        case 'file':
+        if (!params.files[param]) {
+          error = true;
+        }
+        break;
+        case 'string':
+        if (!params.fields[param]) {
+          error = true;
+        }
+        break;
+        default:
+      }
+    });
+    callback(error);
+  },
 
-    debug("ENDPOINT", endpoint);
-    debug("PARAMS", params);
-    debug('Endpoint data: ', endpointData);
-
+  process: function(req, res, endpointData, params) {
     if (endpointData.cors) {
       res.setHeader('Access-Control-Allow-Origin',
         endpointData.cors['Access-Control-Allow-Origin']);
@@ -182,7 +207,7 @@ _RDL_Server.prototype = {
     // Checking if the method is valid
     if (req.method.toLowerCase() in endpointData.methods) {
       // TODO: Method accepted, check entry params type based on defined schema
-      var endpoint_name = endpoint.substring(1);
+      var endpoint_name = endpointData.path.substring(1);
       var callback = endpoint_name + '_' + req.method.toLowerCase();
       if (callback in this && typeof this[callback] === 'function') {
         debug('Located callback function with method name', callback);
@@ -192,7 +217,7 @@ _RDL_Server.prototype = {
         this[endpoint_name](req, res, params, req.method, onendpointCallback);
       } else if ('onendpoint' in this && typeof this['onendpoint'] === 'function') {
         debug('Located generic function onendpoint');
-        this.onendpoint(req, res, endpoint, params, req.method, onendpointCallback);
+        this.onendpoint(req, res, endpointData, params, req.method, onendpointCallback);
       } else {
         debug('No endpoint callback function found !');
         this.error(res, 501, 'Not implemented');
