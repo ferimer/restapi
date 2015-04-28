@@ -6,27 +6,22 @@
 
 var http = require('http'),
     path2regex = require('path-to-regexp'),
-    rdl = require('./parser'),
-    formidable = require('formidable');
+    rdl = require('../parser'),
+    formidable = require('formidable'),
+    log = require('./log');
 
-///////////////////////////////////////////////////////////////////////////
 
-function info(msg) {
-  console.info('REST Server: ' + msg);
-}
-
-var debugEnabled = false;
-function debug(msg, obj) {
-  if (!debugEnabled) {
-    return;
+function checkNetworkOptions(options) {
+  if (typeof options.port !== 'number') {
+    options.port = 3000;
   }
-  if (obj) {
-    msg += ' ' + JSON.stringify(obj);
+  if (typeof options.hostname !== 'string') { // TODO: Check IP
+    options.hostname = '::';
   }
-  info('DEBUG - ' + msg);
+  if (typeof options.hostname6 !== 'string') { // TODO: Check IP
+    options.hostname6 = '::';
+  }
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 /**
  * definition_file: Path to the REST API DEFINITION FILE
@@ -38,26 +33,13 @@ function debug(msg, obj) {
 function _RDL_Server(definition_file, options) {
   this.options = typeof options === 'object' ? options : {};
 
+  // Update log system
+  options.log && log.override(options.log.info, options.log.debug);
   if (options.debug) {
-    debugEnabled = true;
+    log.enable = true;
   }
-  if (options.log) {
-    if (options.log.info && typeof options.log.info === 'function') {
-      info = options.log.info;
-    }
-    if (options.log.debug && typeof options.log.debug === 'function') {
-      debug = options.log.debug;
-    }
-  }
-  if (typeof this.options.port !== 'number') {
-    this.options.port = 3000;
-  }
-  if (typeof this.options.hostname !== 'string') { // TODO: Check IP
-    this.options.hostname = '::';
-  }
-  if (typeof this.options.hostname6 !== 'string') { // TODO: Check IP
-    this.options.hostname6 = '::';
-  }
+
+  checkNetworkOptions(this.options);
 
   this.api = new rdl(definition_file, {
     baseUrl: ''
@@ -71,7 +53,7 @@ function _RDL_Server(definition_file, options) {
 
     // Preparing server
     var api_info = self.api.getInfo();
-    info('Loading API "' + api_info.name +
+    log.info('Loading API "' + api_info.name +
          '" version: ' + api_info.version +
          ' - ' + api_info.description);
 
@@ -91,20 +73,20 @@ function _RDL_Server(definition_file, options) {
     function httpHandler(req, res) {
       res.setHeader('X-Server', 'FerimerRDL HTTP server');
 
-      debug('Query:', JSON.stringify(req.headers));
-      debug('Method: ' + req.method);
-      debug('URL: ' + req.url);
+      log.debug('Query:', JSON.stringify(req.headers));
+      log.debug('Method: ' + req.method);
+      log.debug('URL: ' + req.url);
 
       // Checking endpoints
       for (var i = 0; i < number_of_endpoints; i++) {
         var endpoint = api_paths[i].regexp.exec(req.url);
         if (endpoint) {
-          debug('Endpoint found - ' + api_paths[i].endpoint);
-          debug(' -> ', endpoint);
-          debug('KEYS:', api_paths[i].keys);
+          log.debug('Endpoint found - ' + api_paths[i].endpoint);
+          log.debug(' -> ', endpoint);
+          log.debug('KEYS:', api_paths[i].keys);
           var endpointData = self.api.getEndpoint(api_paths[i].endpoint);
           endpointData.path = api_paths[i].endpoint;
-          debug("Endpoint Data - ", endpointData);
+          log.debug("Endpoint Data - ", endpointData);
 
           var params = {};
           for (var j = 1; j < endpoint.length; j++) {
@@ -115,14 +97,14 @@ function _RDL_Server(definition_file, options) {
           var form = new formidable.IncomingForm();
           form.parse(req, function(err, fields, files) {
             if (err) {
-              info('Error getting fields and files - ' + err);
+              log.info('Error getting fields and files - ' + err);
               self.error(res, 406, err);
               return;
             }
 
             params.fields = fields;
             params.files = files;
-            debug("Received params and files: ", params);
+            log.debug("Received params and files: ", params);
 
             self.checkParameters(req, params, endpointData, function(error) {
               if (error) {
@@ -143,7 +125,7 @@ function _RDL_Server(definition_file, options) {
 
     var server = http.createServer(httpHandler);
     server.listen(self.options.port, self.options.hostname, function() {
-      info('Listening on ' + self.options.hostname + ':' + self.options.port);
+      log.info('Listening on ' + self.options.hostname + ':' + self.options.port);
     });
   }
 }
@@ -162,7 +144,7 @@ _RDL_Server.prototype = {
   },
 
   checkParameters: function(req, params, endpointData, callback) {
-    debug('Checking input parameters...');
+    log.debug('Checking input parameters...');
     var error = false;
     var method = req.method.toLowerCase();
     if (!endpointData.methods[method].params) {
@@ -199,7 +181,7 @@ _RDL_Server.prototype = {
     var self = this;
     function onendpointCallback(error) {
       if (error) {
-        debug('onendpointCallback error:', error);
+        log.debug('onendpointCallback error:', error);
         self.error(res, error.code, error.message);
       } else {
         res.end();
@@ -212,16 +194,16 @@ _RDL_Server.prototype = {
       var endpoint_name = endpointData.path.substring(1);
       var callback = endpoint_name + '_' + req.method.toLowerCase();
       if (callback in this && typeof this[callback] === 'function') {
-        debug('Located callback function with method name', callback);
+        log.debug('Located callback function with method name', callback);
         this[callback](req, res, params, onendpointCallback);
       } else if (endpoint_name in this && typeof this[endpoint_name] === 'function') {
-        debug('Located callback function without method name', endpoint_name);
+        log.debug('Located callback function without method name', endpoint_name);
         this[endpoint_name](req, res, params, req.method, onendpointCallback);
       } else if ('onendpoint' in this && typeof this['onendpoint'] === 'function') {
-        debug('Located generic function onendpoint');
+        log.debug('Located generic function onendpoint');
         this.onendpoint(req, res, endpointData, params, req.method, onendpointCallback);
       } else {
-        debug('No endpoint callback function found !');
+        log.debug('No endpoint callback function found !');
         this.error(res, 501, 'Not implemented');
       }
     } else {
