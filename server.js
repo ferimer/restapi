@@ -191,12 +191,9 @@ _RDL_Server.prototype = {
 
   process: function(req, res, endpointData, params) {
     if (endpointData.cors) {
-      res.setHeader('Access-Control-Allow-Origin',
-        endpointData.cors['Access-Control-Allow-Origin']);
-      res.setHeader('Access-Control-Allow-Methods',
-        endpointData.cors['Access-Control-Allow-Methods']);
-      res.setHeader('Access-Control-Allow-Headers',
-        endpointData.cors['Access-Control-Allow-Headers']);
+      for (var header in endpointData.cors) {
+        res.setHeader(header, endpointData.cors[header]);
+      }
     }
 
     var self = this;
