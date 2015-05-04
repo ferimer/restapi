@@ -5,11 +5,10 @@
 'use strict';
 
 var http = require('http'),
-    path2regex = require('path-to-regexp'),
     rdl = require('../parser'),
-    formidable = require('formidable'),
-    log = require('./log');
-
+    log = require('./log'),
+    endpointsManager = require('./endpointsManager'),
+    endpointManager = require('./endpointManager');
 
 function checkNetworkOptions(options) {
   if (typeof options.port !== 'number') {
@@ -57,70 +56,49 @@ function _RDL_Server(definition_file, options) {
          '" version: ' + api_info.version +
          ' - ' + api_info.description);
 
-    var api_paths = [];
-    self.api.getEndpoints().forEach(function(endpoint) {
-      var keys = [];
-      var re = path2regex(endpoint, keys);
-      api_paths.push({
-        endpoint: endpoint,
-        regexp: re,
-        keys: keys
-      });
-    });
-    var number_of_endpoints = api_paths.length;
+    endpointsManager.apiEndpoints = self.api.getEndpoints();
 
     // Server initialization
     function httpHandler(req, res) {
       res.setHeader('X-Server', 'FerimerRDL HTTP server');
 
-      log.debug('Query:', JSON.stringify(req.headers));
-      log.debug('Method: ' + req.method);
-      log.debug('URL: ' + req.url);
+      log.debug('httpHandler Query:', JSON.stringify(req.headers));
+      log.debug('httpHandler Method: ' + req.method);
+      log.debug('httpHandler URL: ' + req.url);
 
       // Checking endpoints
-      for (var i = 0; i < number_of_endpoints; i++) {
-        var endpoint = api_paths[i].regexp.exec(req.url);
-        if (endpoint) {
-          log.debug('Endpoint found - ' + api_paths[i].endpoint);
-          log.debug(' -> ', endpoint);
-          log.debug('KEYS:', api_paths[i].keys);
-          var endpointData = self.api.getEndpoint(api_paths[i].endpoint);
-          endpointData.path = api_paths[i].endpoint;
-          log.debug("Endpoint Data - ", endpointData);
-
-          var params = {};
-          for (var j = 1; j < endpoint.length; j++) {
-            params[api_paths[i].keys[j-1].name] = endpoint[j];
-          }
-
-          // Processing received parameters
-          var form = new formidable.IncomingForm();
-          form.parse(req, function(err, fields, files) {
-            if (err) {
-              log.info('Error getting fields and files - ' + err);
-              self.error(res, 406, err);
-              return;
-            }
-
-            params.fields = fields;
-            params.files = files;
-            log.debug("Received params and files: ", params);
-
-            self.checkParameters(req, params, endpointData, function(error) {
-              if (error) {
-                self.error(res, 412, 'Bad parameters');
-                return;
-              }
-              self.process(req, res, endpointData, params);
-            });
-          });
-
+      endpointsManager.locate(req.url, function (err, endpointInfo) {
+        if (err) {
+          // If no endpoint found ...
+          log.debug('No endpoint found !');
+          self.error(res, 404, 'Sorry, Endpoint not found in this Server');
           return;
         }
-      }
 
-      // If no endpoint found ...
-      self.error(res, '404', 'Sorry, Endpoint not found in this Server');
+        log.debug('Endpoint found - found URL parameters -> ', endpointInfo);
+
+        var endpointData = new endpointManager(
+          self.api.getEndpoint(endpointInfo.endpoint)
+        );
+        endpointData.path = endpointInfo.endpoint;
+        log.debug("Endpoint Data - ", endpointData.debug);
+
+        endpointData.params.url = endpointInfo.params
+        endpointData.params.obtainFromBody(req).then(function (data) {
+          log.debug("Received params and files: ", data);
+
+          log.debug('Checking input parameters...');
+          endpointData.checkParameters(req).then(function () {
+            log.debug('Valid parameters...');
+            self.process(req, res, endpointData, endpointData.params);
+          }, function (error) {
+            self.error(res, 412, 'Bad parameters');
+          });
+        }, function (error) {
+          log.debug("Error processing body parameters", error);
+          self.error(res, 406, error);
+        });
+      });
     };
 
     var server = http.createServer(httpHandler);
@@ -143,34 +121,6 @@ _RDL_Server.prototype = {
     res.end(errorMsg || (typeof defaultMsg === 'object' ? JSON.stringify(defaultMsg) : defaultMsg));
   },
 
-  checkParameters: function(req, params, endpointData, callback) {
-    log.debug('Checking input parameters...');
-    var error = false;
-    var method = req.method.toLowerCase();
-    if (!endpointData.methods[method].params) {
-      // Mandatory params is optional ...
-      callback(null);
-      return;
-    }
-    var allowedParams = endpointData.methods[method].params;
-    Object.keys(allowedParams).forEach(function(param) {
-      switch (allowedParams[param]) {
-        case 'file':
-        if (!params.files[param]) {
-          error = true;
-        }
-        break;
-        case 'string':
-        if (!params.fields[param]) {
-          error = true;
-        }
-        break;
-        default:
-      }
-    });
-    callback(error);
-  },
-
   process: function(req, res, endpointData, params) {
     if (endpointData.cors) {
       for (var header in endpointData.cors) {
@@ -189,7 +139,7 @@ _RDL_Server.prototype = {
     }
 
     // Checking if the method is valid
-    if (req.method.toLowerCase() in endpointData.methods) {
+    if (req.method.toLowerCase() in endpointData.data.methods) {
       // TODO: Method accepted, check entry params type based on defined schema
       var endpoint_name = endpointData.path.substring(1);
       var callback = endpoint_name + '_' + req.method.toLowerCase();
@@ -201,7 +151,7 @@ _RDL_Server.prototype = {
         this[endpoint_name](req, res, params, req.method, onendpointCallback);
       } else if ('onendpoint' in this && typeof this['onendpoint'] === 'function') {
         log.debug('Located generic function onendpoint');
-        this.onendpoint(req, res, endpointData, params, req.method, onendpointCallback);
+        this.onendpoint(req, res, endpointData.data, params, req.method, onendpointCallback);
       } else {
         log.debug('No endpoint callback function found !');
         this.error(res, 501, 'Not implemented');

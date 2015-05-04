@@ -22,7 +22,8 @@
     ],
     "dependencies": {
         "formidable": "1.0.x",
-        "path-to-regexp": "1.0.x"
+        "path-to-regexp": "1.0.x",
+        "promise": "7.0.x"
     },
     "engines": {
         "node": "0.10.x"
