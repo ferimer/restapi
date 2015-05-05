@@ -83,6 +83,12 @@ function _RDL_Server(definition_file, options) {
         endpointData.path = endpointInfo.endpoint;
         log.debug("Endpoint Data - ", endpointData.debug);
 
+        // Checking if the method is valid
+        if (!(req.method.toLowerCase() in endpointData.data.methods)) {
+          self.error(res, 405, 'Method not allowed for this endpoint');
+          return;
+        }
+
         endpointData.params.url = endpointInfo.params
         endpointData.params.obtainFromBody(req).then(function (data) {
           log.debug("Received params and files: ", data);
@@ -138,26 +144,21 @@ _RDL_Server.prototype = {
       }
     }
 
-    // Checking if the method is valid
-    if (req.method.toLowerCase() in endpointData.data.methods) {
-      // TODO: Method accepted, check entry params type based on defined schema
-      var endpoint_name = endpointData.path.substring(1);
-      var callback = endpoint_name + '_' + req.method.toLowerCase();
-      if (callback in this && typeof this[callback] === 'function') {
-        log.debug('Located callback function with method name', callback);
-        this[callback](req, res, params, onendpointCallback);
-      } else if (endpoint_name in this && typeof this[endpoint_name] === 'function') {
-        log.debug('Located callback function without method name', endpoint_name);
-        this[endpoint_name](req, res, params, req.method, onendpointCallback);
-      } else if ('onendpoint' in this && typeof this['onendpoint'] === 'function') {
-        log.debug('Located generic function onendpoint');
-        this.onendpoint(req, res, endpointData.data, params, req.method, onendpointCallback);
-      } else {
-        log.debug('No endpoint callback function found !');
-        this.error(res, 501, 'Not implemented');
-      }
+    // TODO: Method accepted, check entry params type based on defined schema
+    var endpoint_name = endpointData.path.substring(1);
+    var callback = req.method.toUpperCase() + ' ' + endpoint_name;
+    if (callback in this && typeof this[callback] === 'function') {
+      log.debug('Located callback function with method name', callback);
+      this[callback](req, res, params, onendpointCallback);
+    } else if (endpoint_name in this && typeof this[endpoint_name] === 'function') {
+      log.debug('Located callback function without method name', endpoint_name);
+      this[endpoint_name](req, res, params, req.method, onendpointCallback);
+    } else if ('onendpoint' in this && typeof this['onendpoint'] === 'function') {
+      log.debug('Located generic function onendpoint');
+      this.onendpoint(req, res, endpointData.data, params, req.method, onendpointCallback);
     } else {
-      this.error(res, 405, 'Method not allowed for this endpoint');
+      log.debug('No endpoint callback function found !');
+      this.error(res, 501, 'Not implemented');
     }
   }
 };
