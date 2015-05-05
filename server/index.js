@@ -122,9 +122,10 @@ _RDL_Server.prototype = {
   },
 
   process: function(req, res, endpointData, params) {
-    if (endpointData.cors) {
-      for (var header in endpointData.cors) {
-        res.setHeader(header, endpointData.cors[header]);
+console.log(JSON.stringify(endpointData));
+    if (endpointData.data.cors) {
+      for (var header in endpointData.data.cors) {
+        res.setHeader(header, endpointData.data.cors[header]);
       }
     }
 
