@@ -36,21 +36,22 @@ function endpointManager(endpointData) {
       return new Promise(function (resolve, reject) {
         var error = false;
         var method = req.method.toLowerCase();
-        var allowedParams = _endpointData.methods[method].params;
-        if (!allowedParams) {
-          // Mandatory params are optional ...
+        var mandatoryParameters = _endpointData.methods[method].params;
+        if (!mandatoryParameters) {
+          // Only need to process if RDF defined mandatory parameters
           resolve();
           return;
         }
-        Object.keys(allowedParams).forEach(function(param) {
-          switch (allowedParams[param]) {
+        Object.keys(mandatoryParameters).forEach(function(param) {
+          switch (mandatoryParameters[param]) {
             case 'file':
             if (!_params.files[param]) {
               error = true;
             }
             break;
             case 'string':
-            if (!_params.body[param]) {
+            case 'json':
+            if (!_params.get(param)) {
               error = true;
             }
             break;
