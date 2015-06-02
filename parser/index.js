@@ -135,10 +135,6 @@ _RDL_Parser.prototype = {
         });
         resource.cors = cors;
       }
-      // Workaround issue #15 - Header overwrited
-      resource.cors['Access-Control-Allow-Methods'] =
-        'GET, PUT, POST, DELETE, HEADER, OPTIONS';
-
       return resource;
     } catch(e) {
       return { error: 'Bad endpoint' };

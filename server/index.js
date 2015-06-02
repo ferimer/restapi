@@ -133,6 +133,11 @@ _RDL_Server.prototype = {
         res.setHeader(header, endpointData.data.cors[header]);
       }
     }
+    // XXX: Workaround issue #15 - Header overwrited
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET, PUT, POST, DELETE, HEADER, OPTIONS'
+    );
 
     var self = this;
     function onendpointCallback(error) {
