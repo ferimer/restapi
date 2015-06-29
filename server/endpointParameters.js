@@ -1,6 +1,7 @@
 'use strict';
 
 var formidable = require('formidable'),
+    querystring = require('querystring'),
     Promise = require('promise');
 
 function endpointParameters() {
@@ -17,6 +18,15 @@ function endpointParameters() {
 
     get url() {
       return urlParams;
+    },
+
+    // Process query querystring "param1=value1&param2=value2"
+    set query(p) {
+      queryParams = querystring.parse(p);
+    },
+
+    get query() {
+      return queryParams;
     },
 
     // Process body parameters (including files)
@@ -82,6 +92,9 @@ function endpointParameters() {
       });
       bodyParams && Object.keys(bodyParams).forEach(function(p) {
         allParams[p] = bodyParams[p];
+      });
+      queryParams && Object.keys(queryParams).forEach(function(p) {
+        allParams[p] = queryParams[p];
       });
 
       return allParams;

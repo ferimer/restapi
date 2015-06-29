@@ -5,6 +5,7 @@
 'use strict';
 
 var http = require('http'),
+    url = require('url'),
     rdl = require('../parser'),
     log = require('./log'),
     endpointsManager = require('./endpointsManager'),
@@ -67,7 +68,8 @@ function _RDL_Server(definition_file, options) {
       log.debug('httpHandler URL: ' + req.url);
 
       // Checking endpoints
-      endpointsManager.locate(req.url, function (err, endpointInfo) {
+      var parsedUrl = url.parse(req.url);
+      endpointsManager.locate(parsedUrl.pathname, function (err, endpointInfo) {
         if (err) {
           // If no endpoint found ...
           log.debug('No endpoint found !');
@@ -90,6 +92,7 @@ function _RDL_Server(definition_file, options) {
         }
 
         endpointData.params.url = endpointInfo.params
+        endpointData.params.query = parsedUrl.query;
         endpointData.params.obtainFromBody(req).then(function (data) {
           log.debug("Received params and files: ", data);
 
