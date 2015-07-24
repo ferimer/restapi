@@ -144,8 +144,10 @@ _RDL_Server.prototype = {
 
     // XXX: Workaround issue #17
     // https://github.com/ferimer/restapi/issues/17
-    var allowedOrigin = req.headers['origin'] || '*';
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    if (res.getHeader('access-control-allow-origin') === '*') {
+      var allowedOrigin = req.headers['origin'] || '*';
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    }
 
     var self = this;
     function onendpointCallback(error) {
