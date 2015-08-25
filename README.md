@@ -54,7 +54,7 @@ Then the resource collection `"cars"` will be available through `awesome/v1/cars
 
 ### `common`
 
-Configures common aspects of the answes provided by the server. In particular:
+Configures common aspects of the answers provided by the server. In particular:
 
 ### `cors`
 
@@ -92,6 +92,8 @@ Each version is a map with endpoints as keys and endpoint descriptors as values.
   }
 }
 ```
+
+An endpoint is a string describing an URL and can contain placeholders for variable parts that will be gathered as parameters inside the framework. A placeholder is a fragment of the url in the form of `:<name>`. When converted to a parameter it is always interpreted as a string.
 
 #### Endpoint descriptors
 
