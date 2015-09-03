@@ -66,7 +66,7 @@ Specify the data returned in the body in case of error. The value of `responses`
 
 ```javascript
 {
-  "404": { "data": { "error": "Resource not found } }
+  "404": { "data": { "error": "Resource not found } }"
 }
 ```
 
