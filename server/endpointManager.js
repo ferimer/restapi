@@ -43,19 +43,33 @@ function endpointManager(endpointData) {
           return;
         }
         Object.keys(mandatoryParameters).forEach(function(param) {
+          var paramData = null;
           switch (mandatoryParameters[param]) {
             case 'file':
             if (!_params.files[param]) {
               error = true;
             }
             break;
+
             case 'string':
-            case 'json':
-            if (!_params.get(param)) {
+            paramData = _params.get(param);
+            if (paramData === undefined || typeof paramData !== 'string') {
               error = true;
             }
             break;
+
+            case 'json':
+            paramData = _params.get(param);
+            if (paramData === undefined || typeof paramData !== 'object') {
+              error = true;
+            }
+            break;
+
             default:
+            paramData = _params.get(param);
+            if (paramData !== undefined) {
+              error = true;
+            }
           }
         });
 
