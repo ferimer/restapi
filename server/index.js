@@ -149,7 +149,7 @@ _RDL_Server.prototype = {
       res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     }
 
-    var self = this;
+    const self = this;
     function onendpointCallback(error) {
       if (error) {
         log.debug('onendpointCallback error:', error);
@@ -160,20 +160,29 @@ _RDL_Server.prototype = {
     }
 
     // TODO: Method accepted, check entry params type based on defined schema
-    var endpoint_name = endpointData.path.substring(1);
-    var callback = req.method.toUpperCase() + ' ' + endpoint_name;
-    if (callback in this && typeof this[callback] === 'function') {
-      log.debug('Located callback function with method name', callback);
-      this[callback](req, res, params, onendpointCallback);
-    } else if (endpoint_name in this && typeof this[endpoint_name] === 'function') {
-      log.debug('Located callback function without method name', endpoint_name);
-      this[endpoint_name](req, res, params, req.method, onendpointCallback);
-    } else if ('onendpoint' in this && typeof this['onendpoint'] === 'function') {
-      log.debug('Located generic function onendpoint');
-      this.onendpoint(req, res, endpointData.data, params, req.method, onendpointCallback);
+
+    function callEndpointImpl() {
+      var endpoint_name = endpointData.path.substring(1);
+      var callback = req.method.toUpperCase() + ' ' + endpoint_name;
+      if (callback in self && typeof self[callback] === 'function') {
+        log.debug('Located callback function with method name', callback);
+        self[callback](req, res, params, onendpointCallback);
+      } else if (endpoint_name in self && typeof self[endpoint_name] === 'function') {
+        log.debug('Located callback function without method name', endpoint_name);
+        self[endpoint_name](req, res, params, req.method, onendpointCallback);
+      } else if ('onendpoint' in self && typeof self['onendpoint'] === 'function') {
+        log.debug('Located generic function onendpoint');
+        self.onendpoint(req, res, endpointData.data, params, req.method, onendpointCallback);
+      } else {
+        log.debug('No endpoint callback function found !');
+        self.error(res, 501, 'Not implemented');
+      }
+    }
+
+    if ('onpreparerequest' in this && typeof this['onpreparerequest'] === 'function') {
+      this.onpreparerequest(req, res, callEndpointImpl)
     } else {
-      log.debug('No endpoint callback function found !');
-      this.error(res, 501, 'Not implemented');
+      callEndpointImpl()
     }
   }
 };
