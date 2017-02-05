@@ -11,6 +11,8 @@ var http = require('http'),
     endpointsManager = require('./endpointsManager'),
     endpointManager = require('./endpointManager');
 
+let server = null;
+
 function checkNetworkOptions(options) {
   if (typeof options.port !== 'number') {
     options.port = 3000;
@@ -71,6 +73,10 @@ function _RDL_Server(definition_file, options) {
       var parsedUrl = url.parse(req.url);
       endpointsManager.locate(parsedUrl.pathname, function (err, endpointInfo) {
         if (err) {
+          if (parsedUrl.pathname.startsWith('/socket.io')) {
+            // Socket.IO support
+            return;
+          }
           // If no endpoint found ...
           log.debug('No endpoint found !');
           self.error(res, 404, 'Sorry, Endpoint not found in this Server');
@@ -110,14 +116,20 @@ function _RDL_Server(definition_file, options) {
       });
     };
 
-    var server = http.createServer(httpHandler);
+    server = http.createServer(httpHandler);
     server.listen(self.options.port, self.options.hostname, function() {
       log.info('Listening on ' + self.options.hostname + ':' + self.options.port);
+
+      if ('onlisten' in self && typeof self['onlisten'] === 'function') {
+        self['onlisten']()
+      }
     });
   }
 }
 
 _RDL_Server.prototype = {
+  get server() { return server },
+
   error: function(res, code, defaultMsg) {
     code = typeof code === 'number' ? '' + code : code;
     var response = this.api.getResponse(code);
