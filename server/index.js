@@ -73,9 +73,18 @@ function _RDL_Server(definition_file, options) {
       var parsedUrl = url.parse(req.url);
       endpointsManager.locate(parsedUrl.pathname, function (err, endpointInfo) {
         if (err) {
+          // Socket.IO support
           if (parsedUrl.pathname.startsWith('/socket.io')) {
-            // Socket.IO support
-            return;
+            if (req.method.toUpperCase() === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Methods',
+                'GET, PUT, POST, DELETE, OPTIONS'
+              )
+              res.setHeader('Access-Control-Allow-Origin',
+                req.headers['origin'] || '*')
+              res.writeHead(200)
+              res.end()
+            }
+            return
           }
           // If no endpoint found ...
           log.debug('No endpoint found !');
