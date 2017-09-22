@@ -201,7 +201,13 @@ _RDL_Server.prototype = {
     }
 
     if ('onpreparerequest' in this && typeof this['onpreparerequest'] === 'function') {
-      this.onpreparerequest(req, res, callEndpointImpl)
+      this.onpreparerequest(req, res, err => {
+        if (err) {
+          self.error(res, err.code, err.message)
+          return
+        }
+        callEndpointImpl()
+      })
     } else {
       callEndpointImpl()
     }
